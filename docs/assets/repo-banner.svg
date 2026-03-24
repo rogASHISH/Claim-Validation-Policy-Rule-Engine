@@ -1,0 +1,30 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="640" rx="36" fill="#F4F8FB"/>
+  <rect x="48" y="48" width="1184" height="544" rx="28" fill="url(#bg)"/>
+  <circle cx="1082" cy="144" r="120" fill="#E5F4F4" fill-opacity="0.55"/>
+  <circle cx="198" cy="500" r="160" fill="#FFF1D7" fill-opacity="0.7"/>
+  <rect x="112" y="120" width="520" height="44" rx="22" fill="#DDF3F4"/>
+  <text x="134" y="149" fill="#0B7890" font-family="Arial, sans-serif" font-size="22" font-weight="700">Healthcare Claim Validation Platform</text>
+  <text x="112" y="248" fill="#173247" font-family="Arial, sans-serif" font-size="64" font-weight="700">Claim Validation &amp;</text>
+  <text x="112" y="324" fill="#173247" font-family="Arial, sans-serif" font-size="64" font-weight="700">Policy Rule Engine</text>
+  <text x="112" y="388" fill="#4C667A" font-family="Arial, sans-serif" font-size="28">Normalize raw claim JSON, apply policy rules, and</text>
+  <text x="112" y="426" fill="#4C667A" font-family="Arial, sans-serif" font-size="28">guide action before submission.</text>
+  <rect x="112" y="476" width="234" height="58" rx="18" fill="#0B7890"/>
+  <text x="148" y="513" fill="white" font-family="Arial, sans-serif" font-size="24" font-weight="700">NestJS + React</text>
+  <rect x="778" y="140" width="336" height="320" rx="28" fill="#FFFFFF" fill-opacity="0.9"/>
+  <rect x="812" y="182" width="120" height="18" rx="9" fill="#DDF3F4"/>
+  <rect x="812" y="218" width="268" height="74" rx="18" fill="#FFF1D7"/>
+  <rect x="812" y="312" width="128" height="92" rx="18" fill="#FCEAE6"/>
+  <rect x="952" y="312" width="128" height="92" rx="18" fill="#E9F8EF"/>
+  <text x="838" y="257" fill="#B06D0F" font-family="Arial, sans-serif" font-size="24" font-weight="700">Rejection Risk</text>
+  <text x="838" y="345" fill="#B64132" font-family="Arial, sans-serif" font-size="18" font-weight="700">Audit</text>
+  <text x="838" y="372" fill="#6C7E8C" font-family="Arial, sans-serif" font-size="14">History</text>
+  <text x="976" y="345" fill="#1D7A4A" font-family="Arial, sans-serif" font-size="18" font-weight="700">Reports</text>
+  <text x="976" y="372" fill="#6C7E8C" font-family="Arial, sans-serif" font-size="14">Insights</text>
+  <defs>
+    <linearGradient id="bg" x1="48" y1="48" x2="1232" y2="592" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EEF5F7"/>
+    </linearGradient>
+  </defs>
+</svg>

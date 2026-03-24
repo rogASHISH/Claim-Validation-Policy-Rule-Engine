@@ -1,0 +1,97 @@
+{
+  "claim": {
+    "id": "889a6c6a-8334-4233-99d7-9fa019516510",
+    "internalCaseId": "CFR260208003",
+    "productType": "REIMBURSEMENT",
+    "dateOfAdmission": "2026-02-08T00:00:00.000Z",
+    "dateOfDischarge": "2026-02-09T00:00:00.000Z",
+    "status": "SETTLEMENT_DONE",
+    "finalApprovedAmt": 20000,
+    "treatment": {
+      "estimatedCost": 50000,
+      "metaInfo": {
+        "chiefComplaint": "fever",
+        "doctorPrescription": "febrile seizure",
+        "provisionalDiagnosis": "FEBRILE SEIZURE"
+      }
+    },
+    "policyDetail": {
+      "policyNumber": "34436826202501",
+      "totalSumInsured": 1000000,
+      "remainingSumInsured": 1000000,
+      "inceptionDate": "2025-12-30T00:00:00.000Z",
+      "expiryDate": "2026-12-29T00:00:00.000Z",
+      "metaInfo": {
+        "copay": 0,
+        "subLimit": "0",
+        "policyActive": "YES",
+        "subLimitAmount": 0
+      }
+    },
+    "patient": {
+      "id": "f1ecff02-1d65-45d4-9c28-c85a7ea60d8d",
+      "firstName": "BABY RUPAL TYAGI",
+      "lastName": "TYAGI",
+      "gender": "MALE",
+      "dob": "2025-10-11T00:00:00.000Z"
+    },
+    "billDetail": {
+      "billNumber": "AIBM2526-001222",
+      "finalBillAmount": 22531,
+      "partnerApprovedAmount": 22531,
+      "charges": {
+        "securityDeposit": 0,
+        "hospitalDiscount": 0
+      }
+    },
+    "claimDetail": {
+      "status": "APPROVED",
+      "settlementAmount": 20000,
+      "deductions": [
+        {
+          "code": "DED-001",
+          "description": "Admin charge",
+          "amount": 500
+        },
+        {
+          "code": "DED-001",
+          "description": "Admin charge",
+          "amount": 500
+        }
+      ]
+    }
+  },
+  "policy": {
+    "member": {
+      "policyNumber": "34436826202501",
+      "tenureMonths": 2
+    },
+    "benefits": {
+      "roomRent": {
+        "maxPerDay": 3000
+      },
+      "coveredTreatments": ["FEBRILE SEIZURE", "X-Ray"],
+      "waitingPeriodMonths": 24
+    },
+    "customRules": [
+      {
+        "code": "max_total_amount",
+        "field": "billing.totalAmount",
+        "operator": "lte",
+        "expectedValue": 20000,
+        "failureStatus": "FAIL",
+        "impact": "possible rejection",
+        "message": "Total billed amount exceeds the allowed claim amount."
+      },
+      {
+        "code": "adult_patient_only",
+        "field": "patient.age",
+        "operator": "gte",
+        "expectedValue": 18,
+        "failureStatus": "WARNING",
+        "impact": "review",
+        "message": "Patient age should be verified against an adult-only policy."
+      }
+    ]
+  }
+}
