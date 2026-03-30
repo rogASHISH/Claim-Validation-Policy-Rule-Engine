@@ -242,6 +242,62 @@ a { text-decoration: none; }
 .jv.ok { color: var(--green); }
 .jv.err { color: var(--red); }
 .cc { color: var(--txt-3); }
+.source-switch { display: inline-flex; gap: .35rem; padding: .25rem; border-radius: 999px; background: var(--surface); width: fit-content; }
+.source-btn {
+  padding: .38rem .75rem;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--txt-3);
+  cursor: pointer;
+  font-size: .74rem;
+  font-weight: 700;
+}
+.source-btn.active { background: var(--navy); color: #fff; }
+.pdf-panel {
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+  padding: .95rem;
+  border-radius: var(--r);
+  border: 1px dashed var(--border-2);
+  background: linear-gradient(135deg, rgba(13,143,166,.05) 0%, rgba(255,255,255,.95) 100%);
+}
+.pdf-upload-btn { position: relative; overflow: hidden; width: fit-content; }
+.pdf-upload-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.pdf-file-state { font-size: .76rem; font-weight: 600; color: var(--txt-2); }
+.pdf-file-list { display: flex; flex-wrap: wrap; gap: .45rem; }
+.pdf-file-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: .3rem .55rem;
+  border-radius: 999px;
+  background: var(--teal-lt);
+  color: var(--navy-3);
+  font-size: .71rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bucket-grid-wrap { margin-top: .9rem; }
+.bucket-grid-title { font-size: .74rem; font-weight: 700; color: var(--txt-2); margin-bottom: .55rem; }
+.bucket-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
+.bucket-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  padding: .75rem;
+  border: 1px dashed var(--border-2);
+  border-radius: var(--r-sm);
+  background: var(--white);
+  cursor: pointer;
+}
+.bucket-card input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.bucket-label { font-size: .74rem; font-weight: 700; color: var(--txt-1); }
+.bucket-meta { font-size: .7rem; color: var(--txt-3); }
+.pdf-help { font-size: .73rem; color: var(--txt-3); margin: 0; }
 
 /* ── Error bar ── */
 .err-bar {
@@ -355,6 +411,21 @@ a { text-decoration: none; }
 .tab-btn { padding: .42rem .8rem; border-radius: 10px; font-size: .77rem; font-weight: 500; border: none; cursor: pointer; background: transparent; color: var(--txt-3); transition: all 130ms ease; }
 .tab-btn:hover { background: var(--white); color: var(--txt-2); }
 .tab-btn.active { background: var(--navy); color: #fff; }
+.ingestion-card {
+  margin-bottom: .9rem;
+  padding: .8rem .9rem;
+  border-radius: var(--r);
+  background: var(--teal-lt);
+}
+.ingestion-title {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: .25rem;
+}
+.ingestion-card p { font-size: .77rem; color: var(--txt-2); margin: 0; }
 
 /* ── Code block ── */
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }

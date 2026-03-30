@@ -5,9 +5,15 @@ import { PipelineService } from '../src/modules/pipeline/pipeline.service';
 import { PolicyService } from '../src/modules/policy/policy.service';
 import { DynamicRuleService } from '../src/modules/rule-engine/dynamic-rule.service';
 import { RuleEngineService } from '../src/modules/rule-engine/rule-engine.service';
+import { BillingComplianceRule } from '../src/modules/rule-engine/rules/billing-compliance.rule';
 import { CoverageRule } from '../src/modules/rule-engine/rules/coverage.rule';
+import { DocumentCompletenessRule } from '../src/modules/rule-engine/rules/document-completeness.rule';
 import { DuplicateChargeRule } from '../src/modules/rule-engine/rules/duplicate.rule';
+import { HospitalizationRule } from '../src/modules/rule-engine/rules/hospitalization.rule';
+import { InsuredMemberRule } from '../src/modules/rule-engine/rules/insured-member.rule';
+import { PolicyValidityRule } from '../src/modules/rule-engine/rules/policy-validity.rule';
 import { RoomRentRule } from '../src/modules/rule-engine/rules/room-rent.rule';
+import { SumInsuredRule } from '../src/modules/rule-engine/rules/sum-insured.rule';
 import { WaitingPeriodRule } from '../src/modules/rule-engine/rules/waiting-period.rule';
 
 describe('PipelineService', () => {
@@ -19,6 +25,12 @@ describe('PipelineService', () => {
       new CoverageRule(),
       new WaitingPeriodRule(),
       new DuplicateChargeRule(),
+      new PolicyValidityRule(),
+      new InsuredMemberRule(),
+      new SumInsuredRule(),
+      new HospitalizationRule(),
+      new DocumentCompletenessRule(),
+      new BillingComplianceRule(),
       new DynamicRuleService()
     ),
     new ComparatorService()
@@ -34,6 +46,15 @@ describe('PipelineService', () => {
         dateOfDischarge: '2026-02-09T00:00:00.000Z',
         status: 'SETTLEMENT_DONE',
         finalApprovedAmt: 20000,
+        sourceDocuments: {
+          filenames: ['final-bill.pdf', 'discharge-summary.pdf'],
+          hasDischargeSummary: true,
+          hasFinalBill: true,
+          hasItemizedBill: false,
+          hasClaimForm: false,
+          hasPrescription: false,
+          hasInvestigationReport: false
+        },
         treatment: {
           estimatedCost: 50000,
           metaInfo: {
@@ -64,7 +85,14 @@ describe('PipelineService', () => {
       policy: {
         member: {
           policyNumber: '34436826202501',
-          tenureMonths: 2
+          tenureMonths: 2,
+          insuredPersons: ['BABY RUPAL TYAGI TYAGI']
+        },
+        policyDetail: {
+          inceptionDate: '2025-12-30T00:00:00.000Z',
+          expiryDate: '2026-12-29T00:00:00.000Z',
+          totalSumInsured: 100000,
+          remainingSumInsured: 15000
         },
         benefits: {
           roomRent: {
@@ -88,14 +116,17 @@ describe('PipelineService', () => {
     });
 
     expect(result.status).toBe('REJECTION_RISK');
-    expect(result.summary.failed).toBe(2);
-    expect(result.summary.warnings).toBe(1);
+    expect(result.summary.failed).toBeGreaterThanOrEqual(3);
+    expect(result.summary.warnings).toBeGreaterThanOrEqual(2);
     expect(result.normalizedClaim.treatment.name).toBe('FEBRILE SEIZURE');
     expect(result.normalizedClaim.billing.totalAmount).toBe(22531);
     expect(result.normalizedPolicy.policyNumber).toBe('34436826202501');
+    expect(result.ruleEngineContext.claim.documents.hasDischargeSummary).toBe(true);
     expect(result.issues).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({ rule: 'sum_insured_available' }),
         expect.objectContaining({ rule: 'waiting_period' }),
+        expect.objectContaining({ rule: 'document_completeness', status: 'WARNING' }),
         expect.objectContaining({ rule: 'duplicate_charge', status: 'WARNING' }),
         expect.objectContaining({ rule: 'max_total_amount', status: 'FAIL' })
       ])

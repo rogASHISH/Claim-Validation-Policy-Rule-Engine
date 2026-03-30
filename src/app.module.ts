@@ -5,12 +5,14 @@ import { NormalizerModule } from './modules/normalizer/normalizer.module';
 import { PipelineModule } from './modules/pipeline/pipeline.module';
 import { PolicyModule } from './modules/policy/policy.module';
 import { RuleEngineModule } from './modules/rule-engine/rule-engine.module';
+import { DocumentModule } from './modules/document/document.module';
 import { SharedModule } from './shared/shared.module';
 
 @Module({
   imports: [
     SharedModule,
     ClaimModule,
+    DocumentModule,
     PolicyModule,
     NormalizerModule,
     ComparatorModule,

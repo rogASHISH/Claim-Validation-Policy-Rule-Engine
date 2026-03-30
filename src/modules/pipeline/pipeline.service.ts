@@ -50,6 +50,10 @@ export class PipelineService {
       },
       resolvedMappings: rawPolicyRules.fieldMappings,
       mappingSources: rawPolicyRules.mappingSources,
+      ruleEngineContext: {
+        claim: normalized.claim,
+        policy: normalized.policy
+      },
       normalizedClaim: normalized.claim,
       normalizedPolicy: normalized.policy,
       issues: [...failedRules, ...warningRules],

@@ -17,6 +17,20 @@ export class CoverageRule implements ClaimValidationRule {
     const normalizedCoveredTreatments = Array.isArray(coveredTreatments)
       ? coveredTreatments.map((value) => String(value).trim().toLowerCase())
       : [];
+
+    if (normalizedCoveredTreatments.length === 0) {
+      return {
+        rule: 'coverage',
+        status: RULE_STATUS.WARNING,
+        field: policy.fieldMappings.treatmentNameClaimPath,
+        message: 'No structured covered-treatment list was found in the policy data.',
+        impact: 'review',
+        evidence: {
+          treatmentName,
+          coveredTreatments: normalizedCoveredTreatments
+        }
+      };
+    }
     const isCovered = normalizedCoveredTreatments.includes(treatmentName.toLowerCase());
 
     if (isCovered) {
@@ -25,7 +39,11 @@ export class CoverageRule implements ClaimValidationRule {
         status: RULE_STATUS.PASS,
         field: policy.fieldMappings.treatmentNameClaimPath,
         message: 'Treatment is covered by the policy.',
-        impact: 'none'
+        impact: 'none',
+        evidence: {
+          treatmentName,
+          coveredTreatments: normalizedCoveredTreatments
+        }
       };
     }
 
@@ -34,7 +52,11 @@ export class CoverageRule implements ClaimValidationRule {
       status: RULE_STATUS.FAIL,
       field: policy.fieldMappings.treatmentNameClaimPath,
       message: `Treatment "${treatmentName}" is not covered by the policy.`,
-      impact: 'possible rejection'
+      impact: 'possible rejection',
+      evidence: {
+        treatmentName,
+        coveredTreatments: normalizedCoveredTreatments
+      }
     };
   }
 }

@@ -20,7 +20,12 @@ export class WaitingPeriodRule implements ClaimValidationRule {
         status: RULE_STATUS.PASS,
         field: `policy.${policy.fieldMappings.policyAgeMonthsPolicyPath}`,
         message: 'Waiting period requirement is satisfied.',
-        impact: 'none'
+        impact: 'none',
+        evidence: {
+          policyAgeMonths,
+          waitingPeriodMonths,
+          waitingPeriodBreakdown: policy.rawPolicy.waitingPeriodBreakdown ?? {}
+        }
       };
     }
 
@@ -29,7 +34,12 @@ export class WaitingPeriodRule implements ClaimValidationRule {
       status: RULE_STATUS.FAIL,
       field: `policy.${policy.fieldMappings.policyAgeMonthsPolicyPath}`,
       message: `Policy age ${policyAgeMonths} months is below required waiting period ${waitingPeriodMonths} months.`,
-      impact: 'possible rejection'
+      impact: 'possible rejection',
+      evidence: {
+        policyAgeMonths,
+        waitingPeriodMonths,
+        waitingPeriodBreakdown: policy.rawPolicy.waitingPeriodBreakdown ?? {}
+      }
     };
   }
 }

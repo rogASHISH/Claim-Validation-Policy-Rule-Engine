@@ -28,7 +28,11 @@ export class DuplicateChargeRule implements ClaimValidationRule {
         status: RULE_STATUS.PASS,
         field: policy.fieldMappings.billingItemsClaimPath,
         message: 'No duplicate billing items detected.',
-        impact: 'none'
+        impact: 'none',
+        evidence: {
+          billingItemCount: billingItems.length,
+          duplicates: []
+        }
       };
     }
 
@@ -37,7 +41,11 @@ export class DuplicateChargeRule implements ClaimValidationRule {
       status: RULE_STATUS.WARNING,
       field: policy.fieldMappings.billingItemsClaimPath,
       message: `Duplicate billing items detected for codes: ${Array.from(duplicates).join(', ')}.`,
-      impact: 'review'
+      impact: 'review',
+      evidence: {
+        billingItemCount: billingItems.length,
+        duplicates: Array.from(duplicates)
+      }
     };
   }
 }

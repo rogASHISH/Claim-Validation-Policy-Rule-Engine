@@ -11,13 +11,17 @@ type ValidationResponse = {
   mappingSources?: JsonRecord;
   normalizedClaim?: JsonRecord;
   normalizedPolicy?: JsonRecord;
+  ruleEngineContext?: JsonRecord;
   issues?: Array<Record<string, unknown>>;
   ruleResults?: Array<Record<string, unknown>>;
   matchedContext?: Array<Record<string, unknown>>;
+  ingestion?: Record<string, unknown>;
 };
 
 type WorkspaceView = 'review' | 'audit' | 'rules' | 'reports';
 type DetailTab = 'claim' | 'policy' | 'mappings' | 'rules';
+type InputMode = 'json' | 'pdf';
+type DocumentBuckets = Record<string, File[]>;
 
 type AuditEntry = {
   id: string; createdAt: string; patientName: string; policyNumber: string;
@@ -52,6 +56,25 @@ const demoHistory = (): AuditEntry[] => [
 export default function App() {
   const [claimJson, setClaimJson] = useState(pretty(samplePayload.claim));
   const [policyJson, setPolicyJson] = useState(pretty(samplePayload.policy));
+  const [claimInputMode, setClaimInputMode] = useState<InputMode>('json');
+  const [policyInputMode, setPolicyInputMode] = useState<InputMode>('json');
+  const [claimPdfFiles, setClaimPdfFiles] = useState<File[]>([]);
+  const [policyPdfFiles, setPolicyPdfFiles] = useState<File[]>([]);
+  const [claimPdfBuckets, setClaimPdfBuckets] = useState<DocumentBuckets>({
+    claimFinalBill: [],
+    claimDischargeSummary: [],
+    claimItemizedBill: [],
+    claimClaimForm: [],
+    claimPrescription: [],
+    claimInvestigationReport: [],
+    claimDocument: []
+  });
+  const [policyPdfBuckets, setPolicyPdfBuckets] = useState<DocumentBuckets>({
+    policyCertificate: [],
+    policySchedule: [],
+    policyWording: [],
+    policyDocument: []
+  });
   const [result, setResult] = useState<ValidationResponse | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,22 +109,89 @@ export default function App() {
     if (target === 'claim') setClaimJson(text); else setPolicyJson(text);
   };
 
-  const loadSamples = () => { setClaimJson(pretty(samplePayload.claim)); setPolicyJson(pretty(samplePayload.policy)); setError(''); setResult(null); setActiveView('review'); };
-  const clearWorkspace = () => { setClaimJson(''); setPolicyJson(''); setError(''); setResult(null); };
+  const handleClaimPdfUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    setClaimPdfFiles(files);
+    if (files.length > 0) {
+      setClaimInputMode('pdf');
+    }
+  };
+
+  const handlePolicyPdfUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    setPolicyPdfFiles(files);
+    if (files.length > 0) {
+      setPolicyInputMode('pdf');
+    }
+  };
+
+  const handleBucketUpload = (bucket: string, side: 'claim' | 'policy') => (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (side === 'claim') {
+      setClaimPdfBuckets((prev) => ({ ...prev, [bucket]: files }));
+      if (files.length > 0) {
+        setClaimInputMode('pdf');
+      }
+    } else {
+      setPolicyPdfBuckets((prev) => ({ ...prev, [bucket]: files }));
+      if (files.length > 0) {
+        setPolicyInputMode('pdf');
+      }
+    }
+  };
+
+  const loadSamples = () => { setClaimJson(pretty(samplePayload.claim)); setPolicyJson(pretty(samplePayload.policy)); setClaimInputMode('json'); setPolicyInputMode('json'); setClaimPdfFiles([]); setPolicyPdfFiles([]); setClaimPdfBuckets({ claimFinalBill: [], claimDischargeSummary: [], claimItemizedBill: [], claimClaimForm: [], claimPrescription: [], claimInvestigationReport: [], claimDocument: [] }); setPolicyPdfBuckets({ policyCertificate: [], policySchedule: [], policyWording: [], policyDocument: [] }); setError(''); setResult(null); setActiveView('review'); };
+  const clearWorkspace = () => { setClaimJson(''); setPolicyJson(''); setClaimPdfFiles([]); setPolicyPdfFiles([]); setClaimPdfBuckets({ claimFinalBill: [], claimDischargeSummary: [], claimItemizedBill: [], claimClaimForm: [], claimPrescription: [], claimInvestigationReport: [], claimDocument: [] }); setPolicyPdfBuckets({ policyCertificate: [], policySchedule: [], policyWording: [], policyDocument: [] }); setError(''); setResult(null); };
 
   const handleSubmit = async () => {
     setError(''); setResult(null);
-    let claim: JsonRecord, policy: JsonRecord;
-    try { claim = parseJson(claimJson); policy = parseJson(policyJson); }
-    catch (e) { setError(`Invalid JSON: ${String((e as Error).message)}`); return; }
     setIsSubmitting(true);
     try {
-      const res = await fetch('/validate-claim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ claim, policy }) });
+      let res: Response;
+      if (claimInputMode === 'pdf' || policyInputMode === 'pdf') {
+        const claimAllFiles = [...claimPdfFiles, ...Object.values(claimPdfBuckets).flat()];
+        const policyAllFiles = [...policyPdfFiles, ...Object.values(policyPdfBuckets).flat()];
+        if (claimInputMode === 'pdf' && claimAllFiles.length === 0) {
+          setError('Upload a claim PDF before running verification.');
+          setIsSubmitting(false);
+          return;
+        }
+        if (policyInputMode === 'pdf' && policyAllFiles.length === 0) {
+          setError('Upload a policy PDF before running verification.');
+          setIsSubmitting(false);
+          return;
+        }
+        const formData = new FormData();
+        if (claimInputMode === 'pdf' && claimPdfFiles.length > 0) {
+          claimPdfFiles.forEach((file) => formData.append('claimDocument', file));
+        }
+        Object.entries(claimPdfBuckets).forEach(([bucket, files]) => files.forEach((file) => formData.append(bucket, file)));
+        if (claimInputMode !== 'pdf') {
+          formData.append('claimJson', claimJson);
+        }
+        if (policyInputMode === 'pdf' && policyPdfFiles.length > 0) {
+          policyPdfFiles.forEach((file) => formData.append('policyDocument', file));
+        }
+        Object.entries(policyPdfBuckets).forEach(([bucket, files]) => files.forEach((file) => formData.append(bucket, file)));
+        if (policyInputMode !== 'pdf') {
+          formData.append('policyJson', policyJson);
+        }
+        res = await fetch('/validate-claim/document', { method: 'POST', body: formData });
+      } else {
+        let policy: JsonRecord;
+        try { policy = parseJson(policyJson); }
+        catch (e) { setError(`Invalid policy JSON: ${String((e as Error).message)}`); setIsSubmitting(false); return; }
+        let claim: JsonRecord;
+        try { claim = parseJson(claimJson); }
+        catch (e) { setError(`Invalid claim JSON: ${String((e as Error).message)}`); setIsSubmitting(false); return; }
+        res = await fetch('/validate-claim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ claim, policy }) });
+      }
+
       const data = await res.json() as ValidationResponse | { message?: string };
       if (!res.ok) { setError(typeof data === 'object' && 'message' in data ? `Service error: ${pretty(data.message)}` : `Failed: ${res.status}`); return; }
       const r = data as ValidationResponse;
       setResult(r);
-      const entry: AuditEntry = { id: `run-${Date.now()}`, createdAt: new Date().toISOString(), patientName: sv(rn(r.normalizedClaim, 'patient.name')), policyNumber: sv(rn(r.normalizedPolicy, 'policyNumber')), claimReference: sv(rn(r.normalizedClaim, 'claimReference')) !== '—' ? sv(rn(r.normalizedClaim, 'claimReference')) : sv(rn(r.normalizedClaim, 'caseId')), status: r.status, failed: r.summary.failed, warnings: r.summary.warnings, totalRules: r.summary.totalRules, inferredMappings: Object.keys(r.resolvedMappings ?? {}).length, result: r };
+      const entry: AuditEntry = { id: `run-${Date.now()}`, createdAt: new Date().toISOString(), patientName: sv(rn(r.normalizedClaim, 'patient.name')), policyNumber: sv(rn(r.normalizedPolicy, 'policyNumber')), claimReference: sv(rn(r.normalizedClaim, 'claimReference')) !== '—' ? sv(rn(r.normalizedClaim, 'claimReference')) : sv(rn(r.normalizedClaim, 'metadata.caseId')), status: r.status, failed: r.summary.failed, warnings: r.summary.warnings, totalRules: r.summary.totalRules, inferredMappings: Object.keys(r.resolvedMappings ?? {}).length, result: r };
       setAuditHistory(prev => [entry, ...prev]);
       setSelectedAuditId(entry.id);
     } catch (e) { setError(`Cannot reach service. ${(e as Error).message}`); }
@@ -164,7 +254,7 @@ export default function App() {
         </header>
 
         <div className="content">
-          {activeView === 'review' && <ReviewView {...{claimJson, policyJson, result, error, topIssues, statusMeta, activeTab, setActiveTab, onClaimChange: setClaimJson, onPolicyChange: setPolicyJson, onClaimUpload: handleFileUpload('claim'), onPolicyUpload: handleFileUpload('policy')}} />}
+          {activeView === 'review' && <ReviewView {...{claimJson, policyJson, claimInputMode, policyInputMode, claimPdfFiles, policyPdfFiles, claimPdfBuckets, policyPdfBuckets, result, error, topIssues, statusMeta, activeTab, setActiveTab, onClaimChange: setClaimJson, onPolicyChange: setPolicyJson, onClaimUpload: handleFileUpload('claim'), onPolicyUpload: handleFileUpload('policy'), onClaimPdfUpload: handleClaimPdfUpload, onPolicyPdfUpload: handlePolicyPdfUpload, onClaimBucketUpload: (bucket: string) => handleBucketUpload(bucket, 'claim'), onPolicyBucketUpload: (bucket: string) => handleBucketUpload(bucket, 'policy'), onClaimInputModeChange: setClaimInputMode, onPolicyInputModeChange: setPolicyInputMode}} />}
           {activeView === 'audit' && <AuditView {...{history: auditHistory, summary: historySummary, selectedId: selectedAuditId, onSelect: setSelectedAuditId, currentAudit, previousAudit}} />}
           {activeView === 'rules' && <RulesView builtInRules={BUILT_IN_RULES} customRules={customRules} resolvedMappings={result?.resolvedMappings} />}
           {activeView === 'reports' && <ReportsView history={auditHistory} summary={historySummary} reportSummary={reportSummary} />}
@@ -175,31 +265,59 @@ export default function App() {
 }
 
 /* ── Review ── */
-function ReviewView({ claimJson, policyJson, result, error, topIssues, statusMeta, activeTab, setActiveTab, onClaimChange, onPolicyChange, onClaimUpload, onPolicyUpload }: {
-  claimJson: string; policyJson: string; result: ValidationResponse | null; error: string;
+function ReviewView({ claimJson, policyJson, claimInputMode, policyInputMode, claimPdfFiles, policyPdfFiles, claimPdfBuckets, policyPdfBuckets, result, error, topIssues, statusMeta, activeTab, setActiveTab, onClaimChange, onPolicyChange, onClaimUpload, onPolicyUpload, onClaimPdfUpload, onPolicyPdfUpload, onClaimBucketUpload, onPolicyBucketUpload, onClaimInputModeChange, onPolicyInputModeChange }: {
+  claimJson: string; policyJson: string; claimInputMode: InputMode; policyInputMode: InputMode; claimPdfFiles: File[]; policyPdfFiles: File[]; claimPdfBuckets: DocumentBuckets; policyPdfBuckets: DocumentBuckets; result: ValidationResponse | null; error: string;
   topIssues: Array<Record<string, unknown>>; statusMeta: (typeof STATUS_META)[string];
   activeTab: DetailTab; setActiveTab: (t: DetailTab) => void;
   onClaimChange: (v: string) => void; onPolicyChange: (v: string) => void;
   onClaimUpload: (e: ChangeEvent<HTMLInputElement>) => void; onPolicyUpload: (e: ChangeEvent<HTMLInputElement>) => void;
+  onClaimPdfUpload: (e: ChangeEvent<HTMLInputElement>) => void; onPolicyPdfUpload: (e: ChangeEvent<HTMLInputElement>) => void; onClaimBucketUpload: (bucket: string) => (e: ChangeEvent<HTMLInputElement>) => void; onPolicyBucketUpload: (bucket: string) => (e: ChangeEvent<HTMLInputElement>) => void; onClaimInputModeChange: (v: InputMode) => void; onPolicyInputModeChange: (v: InputMode) => void;
 }) {
   return (
     <div className="stack">
       <div className="card how-card">
         <div className="how-title">4-step review flow</div>
         <div className="how-steps">
-          {[{n:'01',t:'Paste claim JSON',b:'From any hospital portal, billing or reimbursement system.'},{n:'02',t:'Paste policy JSON',b:'Insurer policy with coverage, limits and optional custom rules.'},{n:'03',t:'Run verification',b:'System normalises data and checks every policy rule.'},{n:'04',t:'Take action',b:'Read the risk report and recommended next step.'}].map(s => (
+          {[{n:'01',t:'Add claim JSON or PDF',b:'Use structured JSON or upload a claim PDF for extraction and parsing.'},{n:'02',t:'Paste policy JSON',b:'Insurer policy with coverage, limits and optional custom rules.'},{n:'03',t:'Run verification',b:'System extracts text, parses fields, normalises data, and checks every policy rule.'},{n:'04',t:'Take action',b:'Read the risk report and recommended next step.'}].map(s => (
             <div className="how-step" key={s.n}><div className="how-num">{s.n}</div><div><strong>{s.t}</strong><p>{s.b}</p></div></div>
           ))}
         </div>
       </div>
 
       <div className="upload-grid">
-        <UploadCard title="Patient Claim" kicker="Step 01" sub="Hospital discharge summary or reimbursement JSON"
+        <UploadCard title="Patient Claim" kicker="Step 01" sub="Hospital discharge summary, reimbursement JSON, or claim PDF"
           icon={<svg viewBox="0 0 20 20" fill="none"><path d="M5 17h10a2 2 0 002-2V7l-4-4H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke="currentColor" strokeWidth="1.4"/><path d="M11 3v5h5M7 11h6M7 14h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>}
-          value={claimJson} onChange={onClaimChange} onFile={onClaimUpload} placeholder="Paste raw claim JSON…" />
+          value={claimJson} onChange={onClaimChange} onFile={onClaimUpload} placeholder="Paste raw claim JSON…"
+          mode={claimInputMode} onModeChange={onClaimInputModeChange} onPdfFile={onClaimPdfUpload} pdfFiles={claimPdfFiles} pdfLabel="Upload uncategorized claim PDFs">
+          <DocumentBucketGrid
+            title="Claim document buckets"
+            buckets={[
+              { key: 'claimDischargeSummary', label: 'Discharge summary' },
+              { key: 'claimFinalBill', label: 'Final bill' },
+              { key: 'claimItemizedBill', label: 'Itemized bill' },
+              { key: 'claimClaimForm', label: 'Claim form' },
+              { key: 'claimPrescription', label: 'Prescription' },
+              { key: 'claimInvestigationReport', label: 'Investigation report' }
+            ]}
+            files={claimPdfBuckets}
+            onUpload={onClaimBucketUpload}
+          />
+        </UploadCard>
         <UploadCard title="Insurance Policy" kicker="Step 02" sub="Policy benefits, limits and optional custom rules"
           icon={<svg viewBox="0 0 20 20" fill="none"><path d="M10 3l7 3.5v4.5c0 4-3 7.2-7 8-4-0.8-7-4-7-8V6.5L10 3z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M7 10l2 2 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-          value={policyJson} onChange={onPolicyChange} onFile={onPolicyUpload} placeholder="Paste raw policy JSON…" />
+          value={policyJson} onChange={onPolicyChange} onFile={onPolicyUpload} placeholder="Paste raw policy JSON…"
+          mode={policyInputMode} onModeChange={onPolicyInputModeChange} onPdfFile={onPolicyPdfUpload} pdfFiles={policyPdfFiles} pdfLabel="Upload uncategorized policy PDFs">
+          <DocumentBucketGrid
+            title="Policy document buckets"
+            buckets={[
+              { key: 'policyCertificate', label: 'Policy certificate' },
+              { key: 'policySchedule', label: 'Policy schedule' },
+              { key: 'policyWording', label: 'Policy wording' }
+            ]}
+            files={policyPdfBuckets}
+            onUpload={onPolicyBucketUpload}
+          />
+        </UploadCard>
       </div>
 
       {error && (
@@ -248,9 +366,67 @@ function ReviewView({ claimJson, policyJson, result, error, topIssues, statusMet
           </div>
         </div>
 
-        <div className="card p16">
-          <SHead title="Technical details" sub="For operations review, QA, or investigation" />
-          <div className="tab-bar">
+          <div className="card p16">
+            <SHead title="Technical details" sub="For operations review, QA, or investigation" />
+            {result.ingestion ? (
+              <div className="ingestion-card">
+                <div className="ingestion-title">Document ingestion summary</div>
+                <p>
+                  Claim source: <strong>{sv(result.ingestion.claimSource ?? result.ingestion.sourceType)}</strong>
+                  {' '}• Policy source: <strong>{sv(result.ingestion.policySource ?? 'json')}</strong>
+                  {' '}• Claim extractor: <strong>{sv(result.ingestion.claimExtractor ?? result.ingestion.extractor)}</strong>
+                  {' '}• Policy extractor: <strong>{sv(result.ingestion.policyExtractor)}</strong>
+                </p>
+                <p>
+                  Claim PDFs merged: <strong>{sv(result.ingestion.claimMergedFileCount ?? (result.ingestion.claimMerged ? 1 : 0))}</strong>
+                  {' '}• Policy PDFs merged: <strong>{sv(result.ingestion.policyMergedFileCount ?? (result.ingestion.policyMerged ? 1 : 0))}</strong>
+                </p>
+                {Array.isArray(result.ingestion.claimMergedFilenames) || Array.isArray(result.ingestion.policyMergedFilenames) ? (
+                  <p>
+                    Claim files: <strong>{fmtFileList(result.ingestion.claimMergedFilenames)}</strong>
+                    {' '}• Policy files: <strong>{fmtFileList(result.ingestion.policyMergedFilenames)}</strong>
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            {result.ingestion?.rawParsedClaimPreview || result.ingestion?.rawParsedPolicyPreview ? (
+              <div className="two-col mb1">
+                <CBlock
+                  title="Raw OCR claim JSON"
+                  sub="Generic OCR-normalized claim structure before mapping"
+                  content={pretty(result.ingestion?.rawParsedClaimPreview ?? {})}
+                />
+                <CBlock
+                  title="Raw OCR policy JSON"
+                  sub="Generic OCR-normalized policy structure before mapping"
+                  content={pretty(result.ingestion?.rawParsedPolicyPreview ?? {})}
+                />
+              </div>
+            ) : null}
+            {result.ingestion?.canonicalClaimPreview || result.ingestion?.canonicalPolicyPreview ? (
+              <div className="two-col mb1">
+                <CBlock
+                  title="Mapped claim JSON"
+                  sub="Canonical claim JSON sent into the rule engine"
+                  content={pretty(result.ingestion?.canonicalClaimPreview ?? {})}
+                />
+                <CBlock
+                  title="Mapped policy JSON"
+                  sub="Canonical policy JSON sent into the rule engine"
+                  content={pretty(result.ingestion?.canonicalPolicyPreview ?? {})}
+                />
+              </div>
+            ) : null}
+            {result.ruleEngineContext ? (
+              <div className="mb1">
+                <CBlock
+                  title="Rule engine context"
+                  sub="Canonical fields stored and evaluated by the stricter rule engine"
+                  content={pretty(result.ruleEngineContext)}
+                />
+              </div>
+            ) : null}
+            <div className="tab-bar">
             {(['claim','policy','mappings','rules'] as DetailTab[]).map(t => (
               <button key={t} type="button" className={`tab-btn ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>
                 {{claim:'Claim JSON',policy:'Policy JSON',mappings:'Field Mappings',rules:'Rule Log'}[t]}
@@ -394,8 +570,9 @@ function ReportsView({ history, summary, reportSummary }: { history: AuditEntry[
 }
 
 /* ── Shared components ── */
-function UploadCard({ title, kicker, sub, icon, value, onChange, onFile, placeholder }: { title: string; kicker: string; sub: string; icon: ReactNode; value: string; onChange: (v: string) => void; onFile: (e: ChangeEvent<HTMLInputElement>) => void; placeholder: string }) {
+function UploadCard({ title, kicker, sub, icon, value, onChange, onFile, placeholder, mode, onModeChange, onPdfFile, pdfFiles = [], pdfLabel = 'Upload PDFs', children }: { title: string; kicker: string; sub: string; icon: ReactNode; value: string; onChange: (v: string) => void; onFile: (e: ChangeEvent<HTMLInputElement>) => void; placeholder: string; mode?: InputMode; onModeChange?: (v: InputMode) => void; onPdfFile?: (e: ChangeEvent<HTMLInputElement>) => void; pdfFiles?: File[]; pdfLabel?: string; children?: ReactNode }) {
   const valid = isValidJson(value);
+  const isPdfCard = Boolean(onModeChange);
   return (
     <div className="card upload-card">
       <div className="uc-head">
@@ -403,8 +580,57 @@ function UploadCard({ title, kicker, sub, icon, value, onChange, onFile, placeho
         <div className="uc-meta"><div className="uc-kicker">{kicker}</div><div className="uc-title">{title}</div><div className="uc-sub">{sub}</div></div>
         <label className="btn-ghost file-btn"><svg viewBox="0 0 12 12" fill="none" style={{width:12,height:12}}><path d="M6 1v7M3 4l3-3 3 3M1 11h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>Upload<input type="file" accept=".json,application/json" onChange={onFile} /></label>
       </div>
-      <textarea value={value} onChange={e => onChange(e.target.value)} spellCheck={false} placeholder={placeholder} />
-      <div className="uc-foot"><span className={`jv ${value ? (valid ? 'ok' : 'err') : ''}`}>{value ? (valid ? '✓ Valid JSON' : '✕ Invalid JSON') : 'Awaiting input'}</span><span className="cc">{value.length} chars</span></div>
+      {isPdfCard ? (
+        <div className="source-switch">
+          <button type="button" className={`source-btn ${mode === 'json' ? 'active' : ''}`} onClick={() => onModeChange?.('json')}>Use JSON</button>
+          <button type="button" className={`source-btn ${mode === 'pdf' ? 'active' : ''}`} onClick={() => onModeChange?.('pdf')}>Use PDF</button>
+        </div>
+      ) : null}
+      {mode === 'pdf' && onPdfFile ? (
+        <div className="pdf-panel">
+          <label className="btn-ghost pdf-upload-btn">
+            {pdfLabel}
+            <input type="file" accept="application/pdf" multiple onChange={onPdfFile} />
+          </label>
+          <div className="pdf-file-state">
+            {pdfFiles.length > 0 ? `Selected ${pdfFiles.length} PDF${pdfFiles.length > 1 ? 's' : ''}` : 'No PDFs selected yet'}
+          </div>
+          {pdfFiles.length > 0 ? (
+            <div className="pdf-file-list">
+              {pdfFiles.map((file) => (
+                <span className="pdf-file-chip" key={`${file.name}-${file.size}`}>{file.name}</span>
+              ))}
+            </div>
+          ) : null}
+          {children}
+          <p className="pdf-help">If you upload multiple PDFs, the backend merges them into one claim or policy document before OCR and parsing.</p>
+        </div>
+      ) : (
+        <>
+          <textarea value={value} onChange={e => onChange(e.target.value)} spellCheck={false} placeholder={placeholder} />
+          <div className="uc-foot"><span className={`jv ${value ? (valid ? 'ok' : 'err') : ''}`}>{value ? (valid ? '✓ Valid JSON' : '✕ Invalid JSON') : 'Awaiting input'}</span><span className="cc">{value.length} chars</span></div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function DocumentBucketGrid({ title, buckets, files, onUpload }: { title: string; buckets: Array<{ key: string; label: string }>; files: DocumentBuckets; onUpload: (bucket: string) => (e: ChangeEvent<HTMLInputElement>) => void }) {
+  return (
+    <div className="bucket-grid-wrap">
+      <div className="bucket-grid-title">{title}</div>
+      <div className="bucket-grid">
+        {buckets.map((bucket) => {
+          const bucketFiles = files[bucket.key] ?? [];
+          return (
+            <label className="bucket-card" key={bucket.key}>
+              <span className="bucket-label">{bucket.label}</span>
+              <span className="bucket-meta">{bucketFiles.length > 0 ? `${bucketFiles.length} file${bucketFiles.length > 1 ? 's' : ''}` : 'No file selected'}</span>
+              <input type="file" accept="application/pdf" multiple onChange={onUpload(bucket.key)} />
+            </label>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -448,6 +674,9 @@ function fmtINR(v: unknown): string {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 }
 function sv(v: unknown): string { if (v === null || v === undefined || v === '') return '—'; return String(v); }
+function fmtFileList(v: unknown): string {
+  return Array.isArray(v) && v.length > 0 ? v.map((item) => String(item)).join(', ') : '—';
+}
 function fmtRuleName(v: string): string { return v.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }
 function getTone(s: string): string { if (['REJECTION_RISK','FAIL'].includes(s)) return 'high'; if (['REVIEW_REQUIRED','WARNING'].includes(s)) return 'medium'; if (['CLEARED','PASS'].includes(s)) return 'low'; return 'neutral'; }
 function fmtStatus(s: string): string { return s.replace(/_/g, ' '); }

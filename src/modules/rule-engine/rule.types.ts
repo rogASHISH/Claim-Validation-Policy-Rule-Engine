@@ -8,6 +8,7 @@ export interface RuleResult {
   field: string;
   message: string;
   impact: 'none' | 'review' | 'partial approval' | 'possible rejection';
+  evidence?: Record<string, unknown>;
 }
 
 export interface ClaimValidationRule {

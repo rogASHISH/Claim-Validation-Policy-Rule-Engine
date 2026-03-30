@@ -21,6 +21,7 @@ Full-stack healthcare claim validation platform with JSON normalization, rule en
 ## What This Project Does
 
 - Accepts different claim JSON formats from hospital portals or reimbursement systems
+- Accepts claim PDFs and extracts text before parsing into structured claim JSON
 - Accepts different policy JSON formats from insurer or policy systems
 - Normalizes the raw data automatically into default internal fields
 - Runs built-in policy checks like room rent, treatment coverage, waiting period, and duplicate charge review
@@ -57,6 +58,22 @@ Frontend Views:
 - Reports
 ```
 
+PDF ingestion flow:
+
+```text
+PDF Upload
+   ↓
+Text Extraction Layer
+   ↓
+Raw OCR/Text
+   ↓
+Claim Parsing Logic
+   ↓
+Structured Claim JSON
+   ↓
+Normalization + Rule Engine
+```
+
 ## Main Features
 
 ### Backend
@@ -73,6 +90,7 @@ Frontend Views:
 - React + Vite frontend
 - Responsive dashboard UI
 - Simple claim review workflow for non-technical users
+- Claim source toggle for JSON or PDF
 - Audit history view for review trail
 - Policy rules view for explainability
 - Reports view for operational insights
@@ -203,6 +221,44 @@ curl -X POST http://localhost:3000/validate-claim \
   -d @scripts/sample-claim.json
 ```
 
+### Parse a claim PDF
+
+```bash
+curl -X POST http://localhost:3000/parse/claim-pdf \
+  -F "claimDocument=@/absolute/path/to/claim.pdf;type=application/pdf"
+```
+
+### Parse a policy PDF
+
+```bash
+curl -X POST http://localhost:3000/parse/policy-pdf \
+  -F "policyDocument=@/absolute/path/to/policy.pdf;type=application/pdf"
+```
+
+### Validate a claim using claim/policy PDFs or JSON
+
+```bash
+curl -X POST http://localhost:3000/validate-claim/document \
+  -F "claimDocument=@/absolute/path/to/claim.pdf;type=application/pdf" \
+  -F "policyJson=$(cat scripts/sample-policy.json)"
+```
+
+You can mix formats:
+
+- claim PDF + policy JSON
+- claim JSON + policy PDF
+- claim PDF + policy PDF
+- claim JSON + policy JSON using the original `/validate-claim`
+
+The document validation endpoint:
+
+- extracts readable text from the PDF
+- parses common claim fields into structured JSON
+- parses common policy fields into structured JSON
+- supports OCR fallback for scanned/image PDFs
+- runs the same normalization and rule engine pipeline
+- returns normal validation output plus `ingestion` metadata
+
 ## Frontend Screens
 
 The frontend is organized into four views:
@@ -261,6 +317,7 @@ The backend response can include:
 - `normalizedClaim`
 - `normalizedPolicy`
 - `matchedContext`
+- `ingestion`
 
 ## Scripts
 
